@@ -1,5 +1,7 @@
 import System.IO
 
+data 
+
 data Token =
     TPush
     |TSwap
