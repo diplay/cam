@@ -1,4 +1,5 @@
 import System.IO
+import Text.Printf
 
 data Command =
     Push
@@ -48,7 +49,7 @@ data State = State Term Code Term
 instance Show State where
     show = printState
 
-printState (State t c s) = (show t) ++ " | " ++ (show c) ++ " | " ++ (show s)
+printState (State t c s) = printf "%-40s\t | %-40s\t | %-40s\t |" (show t) (show c) (show s)
 
 printCommand Push = "<"
 printCommand Swap = ","
@@ -58,7 +59,7 @@ printCommand Car = "Fst"
 printCommand Cdr = "Snd"
 printCommand App = "ε"
 printCommand (Quote c) = "'" ++ (show c)
-printCommand (Identifier s) = show s
+printCommand (Identifier s) = s
 printCommand Error = "Error"
 
 printTerm Empty = "[]"
@@ -67,7 +68,7 @@ printTerm (Pair t1 t2) = "[" ++ (show t1) ++ ", " ++ (show t2) ++ "]"
 printTerm (Semicolon t1 t2) = (show t1) ++ " : " ++ (show t2)
 
 stringify (Code []) = ""
-stringify (Code (c:cs)) = (show c) ++ " " ++ show (Code cs)
+stringify (Code (c:cs)) = (show c) ++ show (Code cs)
 
 push (State t (Code (c:cc)) s) = State t (Code cc) (Pair t s)
 swap (State t (Code (c:cc)) (Pair s ss)) = State s (Code cc) (Pair t ss)
