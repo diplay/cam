@@ -51,7 +51,7 @@ instance Show State where
     show = printState
 
 --prints
-printState (State t c s) = printf "%-40s\t | %-40s\t | %-40s\t |" (show t) (show c) (show s)
+printState (State t c s) = printf "%-60s\t | %-60s\t | %-60s\t |" (show t) (show c) (show s)
 
 printCommand Push = "<"
 printCommand Swap = ","
@@ -77,10 +77,12 @@ push (State t (Code (c:cc)) s) = State t (Code cc) (Pair t s)
 swap (State t (Code (c:cc)) (Pair s ss)) = State s (Code cc) (Pair t ss)
 swap (State t (Code (c:cc)) s) = State s (Code cc) t
 cons (State t (Code (c:cc)) (Pair s ss)) = State (Pair s t) (Code cc) ss
+cons (State t (Code (c:cc)) s) = State (Pair s t) (Code cc) Empty
 cur (State t (Code ((Cur cc):cc1)) (Pair s ss)) = State (Pair (Colon (Term cc) s) t) (Code cc1) ss
 car (State (Pair s t) (Code (c:cc)) ss) = State s (Code cc) ss
 cdr (State (Pair s t) (Code (c:cc)) ss) = State t (Code cc) ss
 app (State (Pair (Colon (Term (Code cc)) s) t) (Code (App:cc1)) ss) = State (Pair s t) (Code (cc ++ cc1)) ss
+app (State t c s) = State t (Code [Error]) s
 quote (State t (Code ((Quote c):cc)) s) = State (Term (Code [c])) (Code cc) s
 
 --built-in operations
