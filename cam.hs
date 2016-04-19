@@ -1,6 +1,7 @@
 import System.IO
 import Text.Printf
 
+--types
 data Command =
     Push
     |Swap
@@ -49,6 +50,7 @@ data State = State Term Code Term
 instance Show State where
     show = printState
 
+--prints
 printState (State t c s) = printf "%-40s\t | %-40s\t | %-40s\t |" (show t) (show c) (show s)
 
 printCommand Push = "<"
@@ -70,6 +72,7 @@ printTerm (Semicolon t1 t2) = (show t1) ++ " : " ++ (show t2)
 stringify (Code []) = ""
 stringify (Code (c:cs)) = (show c) ++ show (Code cs)
 
+--CAM commands
 push (State t (Code (c:cc)) s) = State t (Code cc) (Pair t s)
 swap (State t (Code (c:cc)) (Pair s ss)) = State s (Code cc) (Pair t ss)
 swap (State t (Code (c:cc)) s) = State s (Code cc) t
@@ -79,8 +82,13 @@ car (State (Pair s t) (Code (c:cc)) ss) = State s (Code cc) ss
 cdr (State (Pair s t) (Code (c:cc)) ss) = State t (Code cc) ss
 app (State (Pair (Semicolon (Term (Code cc)) s) t) (Code (App:cc1)) ss) = State (Pair s t) (Code (cc ++ cc1)) ss
 quote (State t (Code ((Quote c):cc)) s) = State (Term (Code [c])) (Code cc) s
+
+--built-in operations
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "+"):cc)) s) = (State (Term (Code [Identifier (show $ (read lhs :: Int) + (read rhs :: Int))])) (Code cc) s)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "*"):cc)) s) = (State (Term (Code [Identifier (show $ (read lhs :: Int) * (read rhs :: Int))])) (Code cc) s)
 execId (State t (Code ((Identifier _):cc)) s) = (State t (Code [Error]) s)
 
+--machine step execution
 doStep (State t (Code (Push:cc)) s) = push (State t (Code (Push:cc)) s)
 doStep (State t (Code (Swap:cc)) s) = swap (State t (Code (Swap:cc)) s)
 doStep (State t (Code (Cons:cc)) s) = cons (State t (Code (Cons:cc)) s)
@@ -93,6 +101,7 @@ doStep (State t (Code [Error]) s) = State t (Code []) s
 doStep (State t (Code ((Identifier id):cc)) s) = execId (State t (Code ((Identifier id):cc)) s)
 doStep (State t _ s) = State t (Code [Error]) s
 
+--parsing
 parse code =
     let
         parse' :: [Token] -> [Command]
@@ -114,7 +123,6 @@ parse code =
             in
                 ((Cur (Code curCode)) : parse' xss)
     in [(Code (parse' $ tokenize code), "")]
-
 
 tokenize :: String -> [Token]
 tokenize string =
@@ -148,6 +156,7 @@ tokenize string =
 
 parseCode codeString = fst $ head $ parse codeString
 
+--test
 test = "< Λ(Snd+), < '4, '3 >> ε"
 testState = State Empty (parseCode test) Empty
 
@@ -159,5 +168,13 @@ doAllSteps accStates initState =
 testPrint = do
     let testResult = doAllSteps [] testState
     putStrLn $ "Test case:" ++ test
+    putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
+    mapM_ (putStrLn . show) $ reverse testResult
+
+enterTest = do
+    testCase <- getLine
+    let testCaseState = State Empty (parseCode testCase) Empty
+    let testResult = doAllSteps [] testCaseState
+    putStrLn $ "Test case:" ++ testCase
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
