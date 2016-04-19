@@ -40,7 +40,7 @@ data Token =
 data Term = Empty
     |Term Code
     |Pair Term Term
-    |Semicolon Term Term
+    |Colon Term Term
 
 instance Show Term where
   show = printTerm
@@ -67,7 +67,7 @@ printCommand Error = "Error"
 printTerm Empty = "[]"
 printTerm (Term code) = show code
 printTerm (Pair t1 t2) = "[" ++ (show t1) ++ ", " ++ (show t2) ++ "]"
-printTerm (Semicolon t1 t2) = (show t1) ++ " : " ++ (show t2)
+printTerm (Colon t1 t2) = (show t1) ++ " : " ++ (show t2)
 
 stringify (Code []) = ""
 stringify (Code (c:cs)) = (show c) ++ show (Code cs)
@@ -77,10 +77,10 @@ push (State t (Code (c:cc)) s) = State t (Code cc) (Pair t s)
 swap (State t (Code (c:cc)) (Pair s ss)) = State s (Code cc) (Pair t ss)
 swap (State t (Code (c:cc)) s) = State s (Code cc) t
 cons (State t (Code (c:cc)) (Pair s ss)) = State (Pair s t) (Code cc) ss
-cur (State t (Code ((Cur cc):cc1)) (Pair s ss)) = State (Pair (Semicolon (Term cc) s) t) (Code cc1) ss
+cur (State t (Code ((Cur cc):cc1)) (Pair s ss)) = State (Pair (Colon (Term cc) s) t) (Code cc1) ss
 car (State (Pair s t) (Code (c:cc)) ss) = State s (Code cc) ss
 cdr (State (Pair s t) (Code (c:cc)) ss) = State t (Code cc) ss
-app (State (Pair (Semicolon (Term (Code cc)) s) t) (Code (App:cc1)) ss) = State (Pair s t) (Code (cc ++ cc1)) ss
+app (State (Pair (Colon (Term (Code cc)) s) t) (Code (App:cc1)) ss) = State (Pair s t) (Code (cc ++ cc1)) ss
 quote (State t (Code ((Quote c):cc)) s) = State (Term (Code [c])) (Code cc) s
 
 --built-in operations
@@ -104,31 +104,36 @@ doStep (State t _ s) = State t (Code [Error]) s
 --parsing
 parse code =
     let
-        parse' :: [Token] -> [Command]
-        parse' [] = []
-        parse' (TPush:xs) = (Push : parse' xs)
-        parse' (TSwap:xs) = (Swap : parse' xs)
-        parse' (TCons:xs) = (Cons : parse' xs)
-        parse' (TCar:xs) = (Car : parse' xs)
-        parse' (TCdr:xs) = (Cdr : parse' xs)
-        parse' (TApp:xs) = (App : parse' xs)
-        parse' (TQuote:t:xs) = ((Quote (head $ parse' [t])) : parse' xs)
-        parse' ((TIdentifier id):xs) = ((Identifier id) : parse' xs)
-        parse' (TCur:xs) =
+        parseCur :: [Command] -> [Token] -> (Command, [Token])
+        parseCur acc (TCloseParentheses:xs) = (Cur (Code acc), xs)
+        parseCur acc xs =
             let
-                parseCur acc (TOpenParentheses:xs) = parseCur acc xs
-                parseCur acc (TCloseParentheses:xs) = (acc, xs)
-                parseCur acc (x:xs) = parseCur (acc ++ (parse' [x])) xs
-                (curCode, xss) = parseCur [] xs
+                (curCode, xss) = parse' [] xs
             in
-                ((Cur (Code curCode)) : parse' xss)
-    in [(Code (parse' $ tokenize code), "")]
+                parseCur (acc ++ curCode) xss
+
+        parse' :: [Command] -> [Token] -> ([Command], [Token])
+        parse' acc (TPush:xs) = parse' (Push:acc) xs
+        parse' acc (TSwap:xs) = parse' (Swap:acc) xs
+        parse' acc (TCons:xs) = parse' (Cons:acc) xs
+        parse' acc (TCar:xs) = parse' (Car:acc) xs
+        parse' acc (TCdr:xs) = parse' (Cdr:acc) xs
+        parse' acc (TApp:xs) = parse' (App:acc) xs
+        parse' acc (TQuote:t:xs) = parse' ((Quote (head $ fst $ parse' [] [t])):acc) xs
+        parse' acc ((TIdentifier id):xs) = parse' ((Identifier id):acc) xs
+        parse' acc (TCur:TOpenParentheses:xs) =
+            let
+                (curCommand, xss) = parseCur [] xs
+            in
+                parse' (curCommand:acc) xss
+        parse' acc rest = (reverse acc, rest)
+    in [(Code (fst $ parse' [] $ tokenize code), "")]
 
 tokenize :: String -> [Token]
 tokenize string =
     let
-        parseId acc (x:'F':'s':'t':xs) = (acc, (x:'F':'s':'t':xs))
-        parseId acc (x:'S':'n':'d':xs) = (acc, (x:'S':'n':'d':xs))
+        parseId acc ('F':'s':'t':xs) = (acc, ('F':'s':'t':xs))
+        parseId acc ('S':'n':'d':xs) = (acc, ('S':'n':'d':xs))
         parseId acc (x:xs)
             | x `elem` ['<', '>', ',', '(', ')', '@', 'L', ' ', '\'', '|'] = (acc, (x:xs))
             | otherwise = parseId (acc ++ [x]) xs
@@ -157,7 +162,8 @@ tokenize string =
 parseCode codeString = fst $ head $ parse codeString
 
 --test
-test = "< Λ(Snd+), < '4, '3 >> ε"
+--test = "< Λ(Snd+), < '4, '3 >> ε"
+test = "<<Λ(Λ(<FstSnd,<Snd,FstSnd>ε>>+)),Λ(<'4,Snd>*)>ε,'5>ε"
 testState = State Empty (parseCode test) Empty
 
 doAllSteps accStates (State t (Code []) s) =
@@ -166,15 +172,19 @@ doAllSteps accStates initState =
     doAllSteps (initState:accStates) (doStep initState)
 
 testPrint = do
+    let tokens = tokenize test
     let testResult = doAllSteps [] testState
     putStrLn $ "Test case:" ++ test
+    putStrLn $ "Test case tokens:" ++ (show tokens)
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
 
 enterTest = do
     testCase <- getLine
+    let tokens = tokenize testCase
     let testCaseState = State Empty (parseCode testCase) Empty
     let testResult = doAllSteps [] testCaseState
     putStrLn $ "Test case:" ++ testCase
+    putStrLn $ "Test case tokens:" ++ (show tokens)
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
