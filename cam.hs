@@ -42,13 +42,18 @@ data Term = Empty
     |Pair Term Term
     |Colon Term Term
 
+data Stack = Stack [Term]
+
 instance Show Term where
   show = printTerm
 
-data State = State Term Code Term
+data State = State Term Code Stack
 
 instance Show State where
     show = printState
+
+instance Show Stack where
+    show = printStack
 
 --prints
 printState (State t c s) = printf "%-60s\t | %-60s\t | %-60s\t |" (show t) (show c) (show s)
@@ -64,21 +69,21 @@ printCommand (Quote c) = "'" ++ (show c)
 printCommand (Identifier s) = s
 printCommand Error = "Error"
 
-printTerm Empty = "[]"
+printTerm Empty = "()"
 printTerm (Term code) = show code
 printTerm (Pair t1 t2) = "[" ++ (show t1) ++ ", " ++ (show t2) ++ "]"
 printTerm (Colon t1 t2) = (show t1) ++ " : " ++ (show t2)
+
+printStack (Stack s) = show s
 
 stringify (Code []) = ""
 stringify (Code (c:cs)) = (show c) ++ show (Code cs)
 
 --CAM commands
-push (State t (Code (c:cc)) s) = State t (Code cc) (Pair t s)
-swap (State t (Code (c:cc)) (Pair s ss)) = State s (Code cc) (Pair t ss)
-swap (State t (Code (c:cc)) s) = State s (Code cc) t
-cons (State t (Code (c:cc)) (Pair s ss)) = State (Pair s t) (Code cc) ss
-cons (State t (Code (c:cc)) s) = State (Pair s t) (Code cc) Empty
-cur (State t (Code ((Cur cc):cc1)) (Pair s ss)) = State (Pair (Colon (Term cc) s) t) (Code cc1) ss
+push (State t (Code (c:cc)) (Stack s)) = State t (Code cc) (Stack (t:s))
+swap (State t (Code (c:cc)) (Stack (s:ss))) = State s (Code cc) (Stack (t:ss))
+cons (State t (Code (c:cc)) (Stack (s:ss))) = State (Pair s t) (Code cc) (Stack ss)
+cur (State t (Code ((Cur cc):cc1)) ss) = State (Colon (Term cc) t) (Code cc1) ss
 car (State (Pair s t) (Code (c:cc)) ss) = State s (Code cc) ss
 cdr (State (Pair s t) (Code (c:cc)) ss) = State t (Code cc) ss
 app (State (Pair (Colon (Term (Code cc)) s) t) (Code (App:cc1)) ss) = State (Pair s t) (Code (cc ++ cc1)) ss
@@ -147,6 +152,7 @@ tokenize string =
         tokenize' ('F':'s':'t':xs) tokens = tokenize' xs (TCar:tokens)
         tokenize' ('S':'n':'d':xs) tokens = tokenize' xs (TCdr:tokens)
         tokenize' ('@':xs) tokens = tokenize' xs (TApp:tokens)
+        tokenize' ('e':xs) tokens = tokenize' xs (TApp:tokens)
         tokenize' ('ε':xs) tokens = tokenize' xs (TApp:tokens)
         tokenize' ('L':xs) tokens = tokenize' xs (TCur:tokens)
         tokenize' ('Λ':xs) tokens = tokenize' xs (TCur:tokens)
@@ -165,8 +171,9 @@ parseCode codeString = fst $ head $ parse codeString
 
 --test
 --test = "< Λ(Snd+), < '4, '3 >> ε"
-test = "<<Λ(Λ(<FstSnd,<Snd,FstSnd>ε>>+)),Λ(<'4,Snd>*)>ε,'5>ε"
-testState = State Empty (parseCode test) Empty
+--test = "<Λ(<Snd, <'4, '3>>ε),Λ(Snd+)>ε"
+test = "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"
+testState = State Empty (parseCode test) (Stack [])
 
 doAllSteps accStates (State t (Code []) s) =
     (State t (Code []) s):accStates
@@ -184,7 +191,7 @@ testPrint = do
 enterTest = do
     testCase <- getLine
     let tokens = tokenize testCase
-    let testCaseState = State Empty (parseCode testCase) Empty
+    let testCaseState = State Empty (parseCode testCase) (Stack [])
     let testResult = doAllSteps [] testCaseState
     putStrLn $ "Test case:" ++ testCase
     putStrLn $ "Test case tokens:" ++ (show tokens)
