@@ -172,7 +172,8 @@ parseCode codeString = fst $ head $ parse codeString
 --test
 --test = "< Λ(Snd+), < '4, '3 >> ε"
 --test = "<Λ(<Snd, <'4, '3>>ε),Λ(Snd+)>ε"
-test = "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"
+--test = "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"
+test = "< < L(L(< L(Snd P) , < Fst Snd , Snd > > e)) , 'a > e , 'b > e"
 testState = State Empty (parseCode test) (Stack [])
 
 doAllSteps accStates (State t (Code []) s) =
@@ -197,3 +198,5 @@ enterTest = do
     putStrLn $ "Test case tokens:" ++ (show tokens)
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
+
+main = enterTest
