@@ -51,7 +51,9 @@ data Stack = Stack [Term]
 instance Show Term where
   show = printTerm
 
-data State = State Term Code Stack
+data RecMem = RecMem [(String, Term)]
+
+data State = State Term Code Stack RecMem
 
 instance Show State where
     show = printState
@@ -59,8 +61,11 @@ instance Show State where
 instance Show Stack where
     show = printStack
 
+instance Show RecMem where
+    show = printRecMem
+
 --prints
-printState (State t c s) = printf "%-60s\t | %-60s\t | %s" (show t) (show c) (show s)
+printState (State t c s r) = printf "%-60s\t | %-60s\t | %s" (show t) (show c) (show s)
 
 printCommand Push = "<"
 printCommand Swap = ","
@@ -84,41 +89,59 @@ printTerm (Colon t1 t2) = (show t1) ++ " : " ++ (show t2)
 
 printStack (Stack s) = show s
 
+printRecMem (RecMem r) = show r
+
 stringify (Code []) = ""
 stringify (Code (c:cs)) = (show c) ++ show (Code cs)
 
 --CAM commands
-push (State t (Code (c:cc)) (Stack s)) = State t (Code cc) (Stack (t:s))
-swap (State t (Code (c:cc)) (Stack (s:ss))) = State s (Code cc) (Stack (t:ss))
-cons (State t (Code (c:cc)) (Stack (s:ss))) = State (Pair s t) (Code cc) (Stack ss)
-cur (State t (Code ((Cur cc):cc1)) ss) = State (Colon (Term cc) t) (Code cc1) ss
-car (State (Pair s t) (Code (c:cc)) ss) = State s (Code cc) ss
-cdr (State (Pair s t) (Code (c:cc)) ss) = State t (Code cc) ss
-app (State (Pair (Colon (Term (Code cc)) s) t) (Code (App:cc1)) ss) = State (Pair s t) (Code (cc ++ cc1)) ss
-app (State t c s) = State t (Code [Error]) s
-quote (State t (Code ((Quote c):cc)) s) = State (Term (Code [c])) (Code cc) s
-branch (State (Term (Code [Identifier "True"])) (Code ((Branch codeT codeF):cc)) (Stack (s:ss))) = State (s) codeT (Stack ss)
-branch (State (Term (Code [Identifier "False"])) (Code ((Branch codeT codeF):cc)) (Stack (s:ss))) = State (s) codeF (Stack ss)
+push (State t (Code (c:cc)) (Stack s) r) = State t (Code cc) (Stack (t:s)) r
+swap (State t (Code (c:cc)) (Stack (s:ss)) r) = State s (Code cc) (Stack (t:ss)) r
+cons (State t (Code (c:cc)) (Stack (s:ss)) r) = State (Pair s t) (Code cc) (Stack ss) r
+cur (State t (Code ((Cur cc):cc1)) ss r) = State (Colon (Term cc) t) (Code cc1) ss r
+car (State (Pair s t) (Code (c:cc)) ss r) = State s (Code cc) ss r
+cdr (State (Pair s t) (Code (c:cc)) ss r) = State t (Code cc) ss r
+app (State (Pair (Colon (Term (Code cc)) s) t) (Code (App:cc1)) ss r) = State (Pair s t) (Code (cc ++ cc1)) ss r
+app (State (Pair (Term (Code [Identifier recId])) t) c ss (RecMem r)) =
+    let
+        recBody = lookup recId r
+        getNewTerm (Just t) = t
+        getNewTerm Nothing = Term (Code [Error])
+    in
+        State (Pair (getNewTerm recBody) t) c ss (RecMem r)
+app (State t c s r) = State t (Code [Error]) s r
+quote (State t (Code ((Quote c):cc)) s r) = State (Term (Code [c])) (Code cc) s r
+branch (State (Term (Code [Identifier "True"])) (Code ((Branch codeT codeF):cc)) (Stack (s:ss)) r) = State (s) codeT (Stack ss) r
+branch (State (Term (Code [Identifier "False"])) (Code ((Branch codeT codeF):cc)) (Stack (s:ss)) r) = State (s) codeF (Stack ss) r
+rec (State t (Code ((Rec c):cc)) s (RecMem r)) =
+    let
+        nextRecId = "v" ++ (show $ length r)
+        v = Term (Code [Identifier nextRecId])
+        newR = (nextRecId, Colon (Term c) (Pair t v)):r
+    in
+        State v (Code cc) s (RecMem newR)
 
 --built-in operations
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "+"):cc)) s) = (State (Term (Code [Identifier (show $ (read lhs :: Int) + (read rhs :: Int))])) (Code cc) s)
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "*"):cc)) s) = (State (Term (Code [Identifier (show $ (read lhs :: Int) * (read rhs :: Int))])) (Code cc) s)
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "="):cc)) s) = (State (Term (Code [Identifier (show $ (read lhs :: Int) == (read rhs :: Int))])) (Code cc) s)
-execId (State t (Code ((Identifier _):cc)) s) = (State t (Code [Error]) s)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "+"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) + (read rhs :: Int))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "-"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) - (read rhs :: Int))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "*"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) * (read rhs :: Int))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "="):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) == (read rhs :: Int))])) (Code cc) s r)
+execId (State t (Code ((Identifier _):cc)) s r) = (State t (Code [Error]) s r)
 
 --machine step execution
-doStep (State t (Code (Push:cc)) s) = push (State t (Code (Push:cc)) s)
-doStep (State t (Code (Swap:cc)) s) = swap (State t (Code (Swap:cc)) s)
-doStep (State t (Code (Cons:cc)) s) = cons (State t (Code (Cons:cc)) s)
-doStep (State t (Code ((Cur code):cc)) s) = cur (State t (Code ((Cur code):cc)) s)
-doStep (State t (Code (Car:cc)) s) = car (State t (Code (Car:cc)) s)
-doStep (State t (Code (Cdr:cc)) s) = cdr (State t (Code (Cdr:cc)) s)
-doStep (State t (Code (App:cc)) s) = app (State t (Code (App:cc)) s)
-doStep (State t (Code ((Quote c):cc)) s) = quote (State t (Code ((Quote c):cc)) s)
-doStep (State t (Code [Error]) s) = State t (Code []) s
-doStep (State t (Code ((Identifier id):cc)) s) = execId (State t (Code ((Identifier id):cc)) s)
-doStep (State t (Code ((Branch codeT codeF):cc)) s) = branch (State t (Code ((Branch codeT codeF):cc)) s)
-doStep (State t _ s) = State t (Code [Error]) s
+doStep (State t (Code (Push:cc)) s r) = push (State t (Code (Push:cc)) s r)
+doStep (State t (Code (Swap:cc)) s r) = swap (State t (Code (Swap:cc)) s r)
+doStep (State t (Code (Cons:cc)) s r) = cons (State t (Code (Cons:cc)) s r)
+doStep (State t (Code ((Cur code):cc)) s r) = cur (State t (Code ((Cur code):cc)) s r)
+doStep (State t (Code (Car:cc)) s r) = car (State t (Code (Car:cc)) s r)
+doStep (State t (Code (Cdr:cc)) s r) = cdr (State t (Code (Cdr:cc)) s r)
+doStep (State t (Code (App:cc)) s r) = app (State t (Code (App:cc)) s r)
+doStep (State t (Code ((Quote c):cc)) s r) = quote (State t (Code ((Quote c):cc)) s r)
+doStep (State t (Code [Error]) s r) = State t (Code []) s r
+doStep (State t (Code ((Identifier id):cc)) s r) = execId (State t (Code ((Identifier id):cc)) s r)
+doStep (State t (Code ((Branch codeT codeF):cc)) s r) = branch (State t (Code ((Branch codeT codeF):cc)) s r)
+doStep (State t (Code ((Rec code):cc)) s r) = rec (State t (Code ((Rec code):cc)) s r)
+doStep (State t _ s r) = State t (Code [Error]) s r
 
 --parsing
 parse code =
@@ -145,8 +168,8 @@ parse code =
                 parse' ((Rec (Code yCode)):acc) xss
         parse' acc (TBranch:TOpenParentheses:xs) =
             let
-               (firstCode, xss) = parse' [] xs
-               (secondCode, xsss) = parse' [] (tail xss)
+                (firstCode, xss) = parse' [] xs
+                (secondCode, xsss) = parse' [] (tail xss)
             in
                 parse' ((Branch (Code firstCode) (Code secondCode)):acc) (tail xsss)
         parse' acc (TCloseParentheses:xs) = (reverse acc, xs)
@@ -201,10 +224,10 @@ parseCode codeString = fst $ head $ parse codeString
 --test = "< <'1,'1>= branch (('1), ('2))"
 test = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'1>ε"
 
-testState = State Empty (parseCode test) (Stack [])
+testState = State Empty (parseCode test) (Stack []) (RecMem [])
 
-doAllSteps accStates (State t (Code []) s) =
-    (State t (Code []) s):accStates
+doAllSteps accStates (State t (Code []) s r) =
+    (State t (Code []) s r):accStates
 doAllSteps accStates initState =
     doAllSteps (initState:accStates) (doStep initState)
 
@@ -219,7 +242,7 @@ testPrint = do
 enterTest = do
     testCase <- getLine
     let tokens = tokenize testCase
-    let testCaseState = State Empty (parseCode testCase) (Stack [])
+    let testCaseState = State Empty (parseCode testCase) (Stack []) (RecMem [])
     let testResult = doAllSteps [] testCaseState
     putStrLn $ "Test case:" ++ testCase
     putStrLn $ "Test case tokens:" ++ (show tokens)
