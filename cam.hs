@@ -234,13 +234,14 @@ doAllSteps accStates initState =
 doAllStepsWithoutMemory (State t (Code []) s r) = (State t (Code []) s r)
 doAllStepsWithoutMemory curState = doAllStepsWithoutMemory (doStep curState)
 
+calcFact :: Integer -> String
 calcFact n =
     let
         factString = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'" ++ (show n) ++ ">ε"
         factInitialState = State Empty (parseCode factString) (Stack []) (RecMem [])
         (State t c s r) = doAllStepsWithoutMemory factInitialState
-        getResultFromTerm (Term (Code [Identifier result])) = Just result
-        getResultFromTerm _ = Nothing
+        getResultFromTerm (Term (Code [Identifier result])) = result
+        getResultFromTerm _ = "Cannot calc"
     in
         getResultFromTerm t
 
@@ -262,4 +263,9 @@ enterTest = do
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
 
-main = enterTest
+factTest = do
+    input <- getLine
+    let n = read input :: Integer
+    putStrLn $ (show n) ++ "! = " ++ (calcFact n)
+
+main = factTest
