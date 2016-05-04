@@ -111,8 +111,8 @@ app (State (Pair (Term (Code [Identifier recId])) t) c ss (RecMem r)) =
         State (Pair (getNewTerm recBody) t) c ss (RecMem r)
 app (State t c s r) = State t (Code [Error]) s r
 quote (State t (Code ((Quote c):cc)) s r) = State (Term (Code [c])) (Code cc) s r
-branch (State (Term (Code [Identifier "True"])) (Code ((Branch codeT codeF):cc)) (Stack (s:ss)) r) = State (s) codeT (Stack ss) r
-branch (State (Term (Code [Identifier "False"])) (Code ((Branch codeT codeF):cc)) (Stack (s:ss)) r) = State (s) codeF (Stack ss) r
+branch (State (Term (Code [Identifier "True"])) (Code ((Branch (Code cT) (Code cF)):cc)) (Stack (s:ss)) r) = State (s) (Code (cT ++ cc)) (Stack ss) r
+branch (State (Term (Code [Identifier "False"])) (Code ((Branch (Code cT) (Code cF)):cc)) (Stack (s:ss)) r) = State (s) (Code (cF ++ cc)) (Stack ss) r
 rec (State t (Code ((Rec c):cc)) s (RecMem r)) =
     let
         nextRecId = "v" ++ (show $ length r)
@@ -222,7 +222,7 @@ parseCode codeString = fst $ head $ parse codeString
 --test = "< < L(L(< L(Snd P) , < Fst Snd , Snd > > e)) , 'a > e , 'b > e"
 --test = "< 'True branch (('1), ('2))"
 --test = "< <'1,'1>= branch (('1), ('2))"
-test = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'1>ε"
+test = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'5>ε"
 
 testState = State Empty (parseCode test) (Stack []) (RecMem [])
 
