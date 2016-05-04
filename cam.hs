@@ -13,6 +13,7 @@ data Command =
     |Identifier String
     |Quote Command
     |Branch Code Code
+    |Rec Code
     |Error
 
 instance Show Command where
@@ -37,6 +38,7 @@ data Token =
     |TOpenParentheses
     |TCloseParentheses
     |TBranch
+    |TY
     |TIdentifier String deriving (Show)
 
 data Term = Empty
@@ -58,7 +60,7 @@ instance Show Stack where
     show = printStack
 
 --prints
-printState (State t c s) = printf "%-60s\t | %-60s\t | %-60s\t |" (show t) (show c) (show s)
+printState (State t c s) = printf "%-60s\t | %-60s\t | %s" (show t) (show c) (show s)
 
 printCommand Push = "<"
 printCommand Swap = ","
@@ -72,6 +74,7 @@ printCommand (Identifier "True") = "True "
 printCommand (Identifier "False") = "False "
 printCommand (Identifier s) = s
 printCommand (Branch c1 c2) = "branch(" ++ (show c1) ++ ", " ++ (show c2) ++ ")"
+printCommand (Rec c) = "Y(" ++ (show c) ++ ")"
 printCommand Error = "Error"
 
 printTerm Empty = "()"
@@ -135,12 +138,17 @@ parse code =
                 (curCode, xss) = parse' [] xs
             in
                 parse' ((Cur (Code curCode)):acc) xss
+        parse' acc (TY:TOpenParentheses:xs) =
+            let
+                (yCode, xss) = parse' [] xs
+            in
+                parse' ((Rec (Code yCode)):acc) xss
         parse' acc (TBranch:TOpenParentheses:xs) =
             let
                (firstCode, xss) = parse' [] xs
                (secondCode, xsss) = parse' [] (tail xss)
             in
-                parse' ((Branch (Code firstCode) (Code secondCode)):acc) xsss
+                parse' ((Branch (Code firstCode) (Code secondCode)):acc) (tail xsss)
         parse' acc (TCloseParentheses:xs) = (reverse acc, xs)
         parse' acc rest = (reverse acc, rest)
     in [(Code (fst $ parse' [] $ tokenize code), "")]
@@ -150,17 +158,22 @@ tokenize string =
     let
         parseId acc ('F':'s':'t':xs) = (acc, ('F':'s':'t':xs))
         parseId acc ('S':'n':'d':xs) = (acc, ('S':'n':'d':xs))
+        parseId acc ('b':'r':'a':'n':'c':'h':xs) = (acc, ('b':'r':'a':'n':'c':'h':xs))
+        parseId acc ('b':'r':xs) = (acc, ('b':'r':xs))
         parseId acc (x:xs)
-            | x `elem` ['<', '>', ',', '(', ')', '@', 'L', ' ', '\'', '|'] = (acc, (x:xs))
+            | x `elem` ['<', '>', ',', '(', ')', '@', 'L', ' ', '\'', '|', 'Y'] = (acc, (x:xs))
             | otherwise = parseId (acc ++ [x]) xs
 
         tokenize' [] tokens = tokens
         tokenize' ('<':xs) tokens = tokenize' xs (TPush:tokens)
+        tokenize' ('i':'f':xs) tokens = tokenize' xs (TPush:tokens) --compatibility with Maltsev
         tokenize' (',':xs) tokens = tokenize' xs (TSwap:tokens)
         tokenize' ('>':xs) tokens = tokenize' xs (TCons:tokens)
         tokenize' ('F':'s':'t':xs) tokens = tokenize' xs (TCar:tokens)
         tokenize' ('S':'n':'d':xs) tokens = tokenize' xs (TCdr:tokens)
         tokenize' ('b':'r':'a':'n':'c':'h':xs) tokens = tokenize' xs (TBranch:tokens)
+        tokenize' ('b':'r':xs) tokens = tokenize' xs (TBranch:tokens)
+        tokenize' ('Y':xs) tokens = tokenize' xs (TY:tokens)
         tokenize' ('@':xs) tokens = tokenize' xs (TApp:tokens)
         tokenize' ('e':xs) tokens = tokenize' xs (TApp:tokens)
         tokenize' ('ε':xs) tokens = tokenize' xs (TApp:tokens)
@@ -182,10 +195,12 @@ parseCode codeString = fst $ head $ parse codeString
 --test
 --test = "< Λ(Snd+), < '4, '3 >> ε"
 --test = "<Λ(<Snd, <'4, '3>>ε),Λ(Snd+)>ε"
-test = "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"
+--test = "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"
 --test = "< < L(L(< L(Snd P) , < Fst Snd , Snd > > e)) , 'a > e , 'b > e"
 --test = "< 'True branch (('1), ('2))"
 --test = "< <'1,'1>= branch (('1), ('2))"
+test = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'1>ε"
+
 testState = State Empty (parseCode test) (Stack [])
 
 doAllSteps accStates (State t (Code []) s) =
