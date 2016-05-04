@@ -122,10 +122,10 @@ rec (State t (Code ((Rec c):cc)) s (RecMem r)) =
         State v (Code cc) s (RecMem newR)
 
 --built-in operations
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "+"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) + (read rhs :: Int))])) (Code cc) s r)
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "-"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) - (read rhs :: Int))])) (Code cc) s r)
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "*"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) * (read rhs :: Int))])) (Code cc) s r)
-execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "="):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Int) == (read rhs :: Int))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "+"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Integer) +  (read rhs :: Integer))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "-"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Integer) -  (read rhs :: Integer))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "*"):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Integer) *  (read rhs :: Integer))])) (Code cc) s r)
+execId (State (Pair (Term (Code [Identifier lhs])) (Term (Code [Identifier rhs]))) (Code ((Identifier "="):cc)) s r) = (State (Term (Code [Identifier (show $ (read lhs :: Integer) == (read rhs :: Integer))])) (Code cc) s r)
 execId (State t (Code ((Identifier _):cc)) s r) = (State t (Code [Error]) s r)
 
 --machine step execution
@@ -230,6 +230,19 @@ doAllSteps accStates (State t (Code []) s r) =
     (State t (Code []) s r):accStates
 doAllSteps accStates initState =
     doAllSteps (initState:accStates) (doStep initState)
+
+doAllStepsWithoutMemory (State t (Code []) s r) = (State t (Code []) s r)
+doAllStepsWithoutMemory curState = doAllStepsWithoutMemory (doStep curState)
+
+calcFact n =
+    let
+        factString = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'" ++ (show n) ++ ">ε"
+        factInitialState = State Empty (parseCode factString) (Stack []) (RecMem [])
+        (State t c s r) = doAllStepsWithoutMemory factInitialState
+        getResultFromTerm (Term (Code [Identifier result])) = Just result
+        getResultFromTerm _ = Nothing
+    in
+        getResultFromTerm t
 
 testPrint = do
     let tokens = tokenize test
