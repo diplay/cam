@@ -222,7 +222,8 @@ parseCode codeString = fst $ head $ parse codeString
 --test = "< < L(L(< L(Snd P) , < Fst Snd , Snd > > e)) , 'a > e , 'b > e"
 --test = "< 'True branch (('1), ('2))"
 --test = "< <'1,'1>= branch (('1), ('2))"
-test = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'5>ε"
+--test = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'3>ε"
+test = "<Λ(<Snd, '10>ε), <Λ(Λ(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))), Y(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))>ε>ε"
 
 testState = State Empty (parseCode test) (Stack []) (RecMem [])
 
@@ -252,6 +253,7 @@ testPrint = do
     putStrLn $ "Test case tokens:" ++ (show tokens)
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
+    putStrLn $ show $ length testResult
 
 enterTest = do
     testCase <- getLine
@@ -262,6 +264,7 @@ enterTest = do
     putStrLn $ "Test case tokens:" ++ (show tokens)
     putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
     mapM_ (putStrLn . show) $ reverse testResult
+    putStrLn $ show $ length testResult
 
 factTest = do
     input <- getLine
