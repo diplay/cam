@@ -1,3 +1,5 @@
+module Cam(State, doStep, parse, parseCode, calcFact, enterTest, evalCamCode, evalCamCodeSilent) where
+
 import System.IO
 import Text.Printf
 
@@ -235,16 +237,34 @@ doAllSteps accStates initState =
 doAllStepsWithoutMemory (State t (Code []) s r) = (State t (Code []) s r)
 doAllStepsWithoutMemory curState = doAllStepsWithoutMemory (doStep curState)
 
+evalCamCode str =
+    let
+        tokens = tokenize str
+        testCaseState = State Empty (parseCode str) (Stack []) (RecMem [])
+        testResult = doAllSteps [] testCaseState
+    in
+        "Input:" ++ str ++ "\n" ++
+            "Tokens:" ++ (show tokens) ++ "\n" ++
+            "After parse:" ++ (show $ parseCode str) ++ "\n" ++
+            (foldl (\res el -> res ++ (show el) ++ "\n") "" $ reverse testResult) ++
+            (show $ length testResult)
+
+evalCamCodeSilent :: String -> String
+evalCamCodeSilent str =
+    let
+        initialState = State Empty (parseCode str) (Stack []) (RecMem [])
+        (State t c s r) = doAllStepsWithoutMemory initialState
+        getResultFromTerm (Term (Code [Identifier result])) = result
+        getResultFromTerm _ = "Cannot eval"
+    in
+        getResultFromTerm t
+
 calcFact :: Integer -> String
 calcFact n =
     let
         factString = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'" ++ (show n) ++ ">ε"
-        factInitialState = State Empty (parseCode factString) (Stack []) (RecMem [])
-        (State t c s r) = doAllStepsWithoutMemory factInitialState
-        getResultFromTerm (Term (Code [Identifier result])) = result
-        getResultFromTerm _ = "Cannot calc"
     in
-        getResultFromTerm t
+        evalCamCodeSilent factString
 
 testPrint = do
     let tokens = tokenize test
@@ -257,18 +277,11 @@ testPrint = do
 
 enterTest = do
     testCase <- getLine
-    let tokens = tokenize testCase
-    let testCaseState = State Empty (parseCode testCase) (Stack []) (RecMem [])
-    let testResult = doAllSteps [] testCaseState
-    putStrLn $ "Test case:" ++ testCase
-    putStrLn $ "Test case tokens:" ++ (show tokens)
-    putStrLn $ "Test case after parse:" ++ (show $ parseCode test)
-    mapM_ (putStrLn . show) $ reverse testResult
-    putStrLn $ show $ length testResult
+    putStrLn $ evalCamCode testCase
 
 factTest = do
     input <- getLine
     let n = read input :: Integer
     putStrLn $ (show n) ++ "! = " ++ (calcFact n)
 
-main = factTest
+--main = factTest
