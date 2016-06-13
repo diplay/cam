@@ -23,7 +23,7 @@ data Flag
 
 flags =
     [Option ['l'] []       (NoArg Lambda)
-         "Interpret input as lambda code"
+         "Interpret input as lambda term"
     ,Option ['c'] []       (NoArg CamCode)
          "Interpret input as CAM code"
     ,Option ['t'] []       (NoArg TestCase)
@@ -34,7 +34,7 @@ flags =
          "Calculate factorial"
     ,Option ['F'] []       (NoArg Fib)
          "Calculate Fibonacci"
-    ,Option []    ["help"] (NoArg Help)
+    ,Option ['h'] ["help"] (NoArg Help)
          "Print this help message"
     ]
 
