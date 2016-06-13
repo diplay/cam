@@ -6,10 +6,15 @@ import Lambda
 convertLambdaToCamCode :: LambdaTerm -> String
 convertLambdaToCamCode Empty = "()"
 convertLambdaToCamCode (Const c) =
-    if c `elem` ["+", "*", "-"] then
+    if c `elem` ["+", "*", "-", "="] then
         "Λ(Snd" ++ c ++ ")"
     else
         "'" ++ c
+
+convertLambdaToCamCode (App (App (App (App (App (Const "if") cond) (Const "then")) l) (Const "else")) r) =
+    "< " ++ (convertLambdaToCamCode cond) ++ " branch ((" ++ (convertLambdaToCamCode l) ++ "), (" ++ (convertLambdaToCamCode r) ++ "))"
+
+convertLambdaToCamCode (App (Const "Y") (Abs v1 (Abs v2 r))) = "Y("  ++ (convertLambdaToCamCode r) ++ ")"
 
 convertLambdaToCamCode (App l r) = "<" ++ (convertLambdaToCamCode l) ++ ", " ++ (convertLambdaToCamCode r) ++ ">ε"
 convertLambdaToCamCode (Abs v t) = "Λ(" ++ (convertLambdaToCamCode t) ++ ")"

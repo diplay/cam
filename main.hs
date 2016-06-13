@@ -41,16 +41,17 @@ flags =
 set f = [f]
 
 testCases = [
-        (Lambda, "0", "(λx.λy.+[x, y]) 1 2"),
+        (CamCode, "0", "< Λ(Snd+), < '4, '3 >> ε"),
+        (CamCode, "1", "<Λ(<Snd, <'4, '3>>ε),Λ(Snd+)>ε"),
+        (CamCode, "2", "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"),
+        (CamCode, "3", "< < L(L(< L(Snd P) , < Fst Snd , Snd > > e)) , 'a > e , 'b > e"),
+        (CamCode, "4", "< 'True branch (('1), ('2))"),
+        (CamCode, "5", "< <'1,'1>= branch (('1), ('2))"),
+        (CamCode, "6", "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'3>ε"),
+        (CamCode, "7", "<Λ(<Snd, '5>ε), <Λ(Λ(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))), Y(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))>ε>ε"),
 
-        (CamCode, "1", "< Λ(Snd+), < '4, '3 >> ε"),
-        (CamCode, "2", "<Λ(<Snd, <'4, '3>>ε),Λ(Snd+)>ε"),
-        (CamCode, "3", "<< L(L(< Fst Snd , Snd > e)) , L(< L(Snd +) , < '1 , Snd > > e) > e , '3 > e"),
-        (CamCode, "4", "< < L(L(< L(Snd P) , < Fst Snd , Snd > > e)) , 'a > e , 'b > e"),
-        (CamCode, "5", "< 'True branch (('1), ('2))"),
-        (CamCode, "6", "< <'1,'1>= branch (('1), ('2))"),
-        (CamCode, "7", "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'3>ε"),
-        (CamCode, "8", "<Λ(<Snd, '5>ε), <Λ(Λ(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))), Y(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))>ε>ε")
+        (Lambda, "8", "(λx.λy.+[x, y]) 1 2"),
+        (Lambda, "9", "(λg.g 3)(Y(λf.λn.if(=[n,0])then(1)else(*[n,f(-[n,1])])))")
     ]
 
 listTestCases = foldl (\res (t, num, input) -> res ++ num ++ ") " ++ input ++ "\n") "Test case library:\n" testCases

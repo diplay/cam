@@ -103,13 +103,14 @@ tokenize string =
     let
         parseId acc [] = (acc, [])
         parseId acc (x:xs)
-            | x `elem` ['<', '>', '[', ']', ',', '.', '(', ')', '@', 'L', 'λ', 'Λ', ' ', '\'', '|'] = (acc, (x:xs))
+            | x `elem` ['<', '>', '[', ']', '\\', ',', '.', '(', ')', '@', 'L', 'λ', 'Λ', ' ', '\'', '|'] = (acc, (x:xs))
             | otherwise = parseId (acc ++ [x]) xs
 
         tokenize' [] tokens = tokens
         tokenize' ('L':xs) tokens = tokenize' xs (TLambda:tokens)
         tokenize' ('Λ':xs) tokens = tokenize' xs (TLambda:tokens)
         tokenize' ('λ':xs) tokens = tokenize' xs (TLambda:tokens)
+        tokenize' ('\\':xs) tokens = tokenize' xs (TLambda:tokens)
         tokenize' ('(':xs) tokens = tokenize' xs (TOpenParentheses:tokens)
         tokenize' (')':xs) tokens = tokenize' xs (TCloseParentheses:tokens)
         tokenize' ('[':xs) tokens = tokenize' xs (TOpenBrackets:tokens)
