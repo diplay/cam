@@ -1,4 +1,4 @@
-module Cam(State, doStep, parse, parseCode, calcFact, enterTest, evalCamCode, evalCamCodeSilent) where
+module Cam(State, doStep, parse, parseCode, calcFact, calcFib, enterTest, evalCamCode, evalCamCodeSilent) where
 
 import System.IO
 import Text.Printf
@@ -259,12 +259,25 @@ evalCamCodeSilent str =
     in
         getResultFromTerm t
 
-calcFact :: Integer -> String
-calcFact n =
+calcFact :: Bool -> Integer -> String
+calcFact silent n =
     let
         factString = "<<Y(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))>Λ(if<Snd,'0>=br(('1),(<Snd,<FstSnd,<Snd,'1>->ε>*)))><Snd,'" ++ (show n) ++ ">ε"
     in
-        evalCamCodeSilent factString
+        if silent then
+            evalCamCodeSilent factString
+        else
+            evalCamCode factString
+
+calcFib :: Bool -> Integer -> String
+calcFib silent n =
+    let
+        fibString = "<Λ(<Snd, '" ++ (show n) ++ ">ε), <Λ(Λ(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))), Y(if<Λ(Snd =), <Snd, '0>>εbr(('1),(if<Λ(Snd =), <Snd, '1>>εbr(('1),(<Λ(Snd +), <<FstSnd, <Λ(Snd -), <Snd, '1>>ε>ε, <FstSnd, <Λ(Snd -), <Snd, '2>>ε>ε>>ε)))))>ε>ε"
+    in
+        if silent then
+            evalCamCodeSilent fibString
+        else
+            evalCamCode fibString
 
 testPrint = do
     let tokens = tokenize test
@@ -282,6 +295,6 @@ enterTest = do
 factTest = do
     input <- getLine
     let n = read input :: Integer
-    putStrLn $ (show n) ++ "! = " ++ (calcFact n)
+    putStrLn $ (show n) ++ "! = " ++ (calcFact True n)
 
 --main = factTest

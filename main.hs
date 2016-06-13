@@ -16,6 +16,8 @@ data Flag
     | CamCode               -- -c
     | TestCase              -- -t
     | OnlyResult            -- -o
+    | Fact                  -- -f
+    | Fib                   -- -F
     | Help                  -- --help
     deriving (Eq,Ord,Enum,Show,Bounded)
 
@@ -27,7 +29,11 @@ flags =
     ,Option ['t'] []       (NoArg TestCase)
          "Use test case from library"
     ,Option ['o'] []       (NoArg OnlyResult)
-         "Squeeze multiple adjacent empty lines, causing the output to be single spaced."
+         "Print only result without steps"
+    ,Option ['f'] []       (NoArg Fact)
+         "Calculate factorial"
+    ,Option ['F'] []       (NoArg Fib)
+         "Calculate Fibonacci"
     ,Option []    ["help"] (NoArg Help)
          "Print this help message"
     ]
@@ -86,13 +92,30 @@ processCamCode flags camCode =
     else
         evalCamCode camCode
 
+processFactorial flags n =
+    if OnlyResult `elem` flags then
+        (show n) ++ "! = " ++ (calcFact True n)
+    else
+        (show n) ++ "! = " ++ (calcFact False n)
+
+processFibonacci flags n =
+    if OnlyResult `elem` flags then
+        "Fibonacci " ++ (show n) ++ " = " ++ (calcFib True n)
+    else
+        "Fibonacci " ++ (show n) ++ " = " ++ (calcFib False n)
+
 processInput :: [Flag] -> String -> IO()
 processInput flags input = do
     putStrLn $ "Processing input: " ++ input
-    camCode <- getCamCode flags input
-    putStrLn $ "CAM code:" ++ camCode
-    putStrLn "Passing CAM code to CAM interpreter"
-    putStrLn $ processCamCode flags camCode
+    if Fact `elem` flags then
+        putStrLn $ processFactorial flags (read input :: Integer)
+    else if Fib `elem` flags then
+        putStrLn $ processFibonacci flags (read input :: Integer)
+    else do
+        camCode <- getCamCode flags input
+        putStrLn $ "CAM code:" ++ camCode
+        putStrLn "Passing CAM code to CAM interpreter"
+        putStrLn $ processCamCode flags camCode
 
 main = do
     (as, input) <- getArgs >>= parseArgs
